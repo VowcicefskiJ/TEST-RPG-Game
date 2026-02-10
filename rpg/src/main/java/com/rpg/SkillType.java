@@ -1,0 +1,20 @@
+package com.rpg;
+
+public enum SkillType {
+    COOKING,
+    FARMING,
+    FISHING,
+    FIGHTING,
+    FORAGING,
+    MAPPING,
+    ALCHEMY,
+    MINING,
+    GEOLOGY,
+    ARCHAEOLOGY,
+    LOREKEEPING,
+    MAGIC_SCHOOLS,
+    BLACKSMITHING,
+    ARMOR_MAKING,
+    WEAPON_MAKING,
+    STAFF_MAKING
+}
