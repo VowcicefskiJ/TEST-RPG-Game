@@ -1,6 +1,6 @@
 # Project Map
 
-This document helps other AI agents (and humans) quickly understand the RPG prototype layout and where to extend it.
+This document helps someome quickly understand the RPG prototype layout and where to extend it.
 
 ## Entry point
 
