@@ -5,6 +5,9 @@ import java.util.Map;
 
 public class Player extends Combatant {
     private final Map<SkillType, Skill> skills;
+    private final Inventory inventory;
+    private int stamina;
+    private int maxStamina;
 
     public Player(String name) {
         super(name, 120, 80, 14, 9, 13);
@@ -12,15 +15,36 @@ public class Player extends Combatant {
         for (SkillType type : SkillType.values()) {
             skills.put(type, new Skill(type));
         }
+        this.inventory = new Inventory();
+        this.maxStamina = 100;
+        this.stamina = maxStamina;
     }
 
     public Skill getSkill(SkillType type) {
         return skills.get(type);
     }
 
+    public Inventory getInventory() {
+        return inventory;
+    }
+
+    public int getStamina() { return stamina; }
+    public int getMaxStamina() { return maxStamina; }
+
+    public boolean useStamina(int amount) {
+        if (stamina < amount) return false;
+        stamina = Math.max(0, stamina - amount);
+        return true;
+    }
+
+    public void recoverStamina(int amount) {
+        stamina = Math.min(maxStamina, stamina + amount);
+    }
+
     public void trainSkill(SkillType type, int experience) {
         Skill skill = skills.get(type);
         if (skill != null) {
+            int oldLevel = skill.getLevel();
             skill.addExperience(experience);
         }
     }

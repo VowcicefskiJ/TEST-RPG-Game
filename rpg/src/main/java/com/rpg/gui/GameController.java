@@ -2,6 +2,7 @@ package com.rpg.gui;
 
 import com.rpg.*;
 
+import java.util.List;
 import java.util.Random;
 
 public class GameController {
@@ -15,6 +16,7 @@ public class GameController {
 
     private boolean inCombat = false;
     private Npc currentOpponent;
+    private MapEntity currentCombatEntity;
 
     public GameController(GameWorld world, Player player, GamePanel gamePanel,
                           StatsPanel statsPanel, ActionPanel actionPanel) {
@@ -31,35 +33,55 @@ public class GameController {
         actionPanel.showActions(world.getAvailableActions());
         actionPanel.log("You pass through the Ashen Gate into Gloamcrest Rise.");
         actionPanel.log("A fortress crowns the jagged rise. Mist coils around the chapel terraces.");
-        actionPanel.log("Use WASD/Arrows to move. Press E or Space near entities to interact.");
+        actionPanel.log("Use WASD/Arrows to move. Walk into entities to interact.");
         actionPanel.log("");
+
+        // Show active quest
+        List<Quest> active = world.getQuestLog().getActiveQuests();
+        if (!active.isEmpty()) {
+            Quest q = active.get(0);
+            actionPanel.log("[QUEST] " + q.getName() + ": " + q.getDescription());
+            actionPanel.log("");
+        }
     }
 
     public void onPlayerMoved(int x, int y) {
-        // Check for nearby entities and hint
-        for (MapEntity e : gamePanel.getParent() != null ?
-                ((GamePanel) gamePanel).getTileMap().getEntities() :
-                java.util.List.<MapEntity>of()) {
-            // handled by tooltip in panel
-        }
-    }
+        // Context-aware: show only nearby relevant actions
+        TileMap map = gamePanel.getTileMap();
+        if (map == null) return;
 
-    // Called by GamePanel - need access to tileMap
-    public void onPlayerMoved2(int x, int y, TileMap map) {
-        // Look for adjacent entities
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
+        // Check for adjacent resource nodes and show context actions
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
                 MapEntity e = map.getEntityAt(x + dx, y + dy);
-                if (e != null && (dx != 0 || dy != 0)) {
-                    // Show hint in status
+                if (e != null && e.getType() == MapEntity.TYPE_RESOURCE) {
+                    showContextActions(e);
+                    return;
                 }
             }
         }
+        // Default: show all actions
+        if (!inCombat) {
+            actionPanel.showActions(world.getAvailableActions());
+        }
     }
 
-    public void interact(int playerX, int playerY) {
-        // Not used directly - interaction happens on contact
+    private void showContextActions(MapEntity resourceEntity) {
+        // Find the skill type this resource matches
+        Area area = world.getAreas().get(0);
+        for (ResourceNode node : area.getResources()) {
+            if (node.getName().equals(resourceEntity.getName())) {
+                List<SkillAction> contextActions = world.getActionsForSkill(node.getSkillType());
+                if (!contextActions.isEmpty()) {
+                    actionPanel.showActions(contextActions);
+                    return;
+                }
+            }
+        }
+        actionPanel.showActions(world.getAvailableActions());
     }
+
+    public void interact(int playerX, int playerY) {}
 
     public void onEntityContact(MapEntity entity) {
         switch (entity.getType()) {
@@ -79,19 +101,40 @@ public class GameController {
         actionPanel.log("--- " + entity.getName() + " ---");
         actionPanel.log(entity.getDescription());
 
-        // Find a matching skill action
-        for (SkillAction action : world.getAvailableActions()) {
-            if (entity.getDescription().toUpperCase().contains(action.getSkillType().name())) {
-                performAction(action);
+        // Find the matching resource node to get the item
+        Area area = world.getAreas().get(0);
+        for (ResourceNode node : area.getResources()) {
+            if (node.getName().equals(entity.getName())) {
+                String item = node.getResourceItem();
+                player.getInventory().addItem(item, 1);
+                actionPanel.log("  Gathered: " + item);
+
+                // Train the matching skill
+                List<SkillAction> actions = world.getActionsForSkill(node.getSkillType());
+                if (!actions.isEmpty()) {
+                    SkillAction action = actions.get(0);
+                    player.trainSkill(action.getSkillType(), action.getExperienceReward());
+                    actionPanel.log("  +" + action.getExperienceReward() + " XP in " + action.getSkillType());
+                }
+
+                // Update quest progress
+                world.getQuestLog().onItemGathered(item, 1);
+                world.getQuestLog().onSkillTrained(node.getSkillType(), 1);
+
+                checkQuestCompletion();
+                checkMilestones();
+                statsPanel.refresh();
+                showInventorySnapshot();
+                actionPanel.log("");
                 return;
             }
         }
-        actionPanel.log("You examine the node but have no matching skill action ready.");
+        actionPanel.log("You examine the node but find nothing to gather.");
     }
 
     private void startCombat(MapEntity entity) {
         inCombat = true;
-        // Find matching NPC from world
+        currentCombatEntity = entity;
         Area area = world.getAreas().get(0);
         currentOpponent = null;
         for (Npc monster : area.getMonsters()) {
@@ -109,7 +152,8 @@ public class GameController {
         actionPanel.log("");
         actionPanel.log("=== COMBAT: " + entity.getName() + " ===");
         actionPanel.log(entity.getDescription());
-        actionPanel.log("Choose your attack direction!");
+        actionPanel.log("Stamina: " + player.getStamina() + "/" + player.getMaxStamina());
+        actionPanel.log("Choose your attack! (Vary directions for combos, use Feint to trick)");
         actionPanel.showCombatActions(entity);
     }
 
@@ -117,6 +161,9 @@ public class GameController {
         actionPanel.log("");
         actionPanel.log("--- " + entity.getName() + " ---");
         actionPanel.log("\"" + entity.getDescription() + "\"");
+
+        // Quest tracking
+        world.getQuestLog().onNpcTalkedTo(entity.getName());
 
         if (entity.getName().contains("Elowen")) {
             actionPanel.log("");
@@ -130,7 +177,39 @@ public class GameController {
                     }
                 }
             }
+
+            // Show available quests
+            List<Quest> available = world.getQuestLog().getAvailableQuests();
+            if (!available.isEmpty()) {
+                actionPanel.log("");
+                actionPanel.log("Elowen has quests for you:");
+                for (Quest q : available) {
+                    q.activate();
+                    actionPanel.log("  [NEW QUEST] " + q.getName() + ": " + q.getDescription());
+                    for (Quest.QuestGoal goal : q.getGoals()) {
+                        actionPanel.log("    - " + goal.describe());
+                    }
+                }
+            }
+
+            // Show craftable recipes
+            List<Recipe> craftable = getCraftableRecipes();
+            if (!craftable.isEmpty()) {
+                actionPanel.log("");
+                actionPanel.log("Recipes you can craft:");
+                for (Recipe r : craftable) {
+                    actionPanel.log("  [CRAFT] " + r.getName() + " -> " + r.getResultItem());
+                }
+            }
         }
+
+        if (entity.getName().contains("Auction")) {
+            actionPanel.log("");
+            actionPanel.log("Your inventory:");
+            showInventoryFull();
+        }
+
+        checkQuestCompletion();
     }
 
     public void performAction(SkillAction action) {
@@ -139,8 +218,16 @@ public class GameController {
         actionPanel.log("  +" + action.getExperienceReward() + " XP in " + action.getSkillType());
 
         Skill skill = player.getSkill(action.getSkillType());
-        actionPanel.log("  " + action.getSkillType() + " is now level " + skill.getLevel()
-                + " (" + skill.getExperience() + " XP)");
+        actionPanel.log("  " + action.getSkillType() + " Lv " + skill.getLevel()
+                + " (" + skill.getExperience() + "/" + skill.experienceForNextLevel() + " XP)");
+
+        world.getQuestLog().onSkillTrained(action.getSkillType(), action.getExperienceReward());
+        checkQuestCompletion();
+        checkMilestones();
+
+        // Auto-craft available recipes after gathering
+        autoCraft();
+
         actionPanel.log("");
         statsPanel.refresh();
     }
@@ -148,52 +235,114 @@ public class GameController {
     public void performMeleeAttack(CombatDirection direction, MapEntity monster) {
         if (!inCombat || currentOpponent == null) return;
 
-        CombatDirection enemyDir = CombatDirection.values()[random.nextInt(4)];
-        CombatResult result = combatSystem.resolveMeleeAttack(player, currentOpponent,
-                direction, enemyDir);
-        actionPanel.log("You strike from " + direction + ". Enemy guards " + enemyDir + ".");
-        actionPanel.log("  " + result.getNarration());
-        if (result.getDamageDealt() > 0) {
-            actionPanel.log("  Dealt " + result.getDamageDealt() + " damage. Enemy HP: "
-                    + currentOpponent.getHealth());
-        }
-
-        if (!currentOpponent.isAlive()) {
-            actionPanel.log(currentOpponent.getName() + " is defeated!");
-            player.trainSkill(SkillType.FIGHTING, 40);
-            actionPanel.log("  +40 XP in FIGHTING");
-            statsPanel.refresh();
-            endCombat();
+        if (!player.useStamina(combatSystem.getMeleeStaminaCost())) {
+            actionPanel.log("Not enough stamina! Rest or retreat.");
             return;
         }
 
-        // Enemy counterattack
+        // Tick bleed on opponent
+        if (currentOpponent.getBleedTurns() > 0) {
+            int oldHp = currentOpponent.getHealth();
+            currentOpponent.tickStatusEffects();
+            actionPanel.log("  " + currentOpponent.getName() + " bleeds for "
+                    + (oldHp - currentOpponent.getHealth()) + " damage.");
+        }
+
+        CombatDirection enemyDir = CombatDirection.values()[random.nextInt(4)];
+        CombatResult result = combatSystem.resolveMeleeAttack(player, currentOpponent,
+                direction, enemyDir);
+        actionPanel.log("You strike " + direction + ". Enemy guards " + enemyDir
+                + ". [Stamina: " + player.getStamina() + "]");
+        actionPanel.log("  " + result.getNarration());
+        if (result.getDamageDealt() > 0) {
+            actionPanel.log("  Enemy HP: " + currentOpponent.getHealth() + "/" + currentOpponent.getMaxHealth());
+        }
+
+        if (!currentOpponent.isAlive()) {
+            onMonsterDefeated();
+            return;
+        }
+
+        if (currentOpponent.wantsToFlee()) {
+            actionPanel.log(currentOpponent.getName() + " cowers and tries to flee!");
+            actionPanel.log("You finish it off as it turns to run.");
+            currentOpponent.takeDamage(currentOpponent.getHealth());
+            onMonsterDefeated();
+            return;
+        }
+
         enemyCounterattack();
     }
 
     public void performMagicAttack(CombatDirection direction, MapEntity monster) {
         if (!inCombat || currentOpponent == null) return;
 
+        if (!player.useStamina(combatSystem.getMagicStaminaCost())) {
+            actionPanel.log("Not enough stamina for magic! Rest or retreat.");
+            return;
+        }
+
         CombatDirection enemyDir = CombatDirection.values()[random.nextInt(4)];
         CombatResult result = combatSystem.resolveMagicBolt(player, currentOpponent,
                 direction, enemyDir);
-        actionPanel.log("You cast a bolt from " + direction + ". Enemy guards " + enemyDir + ".");
+        actionPanel.log("You cast bolt " + direction + ". Enemy guards " + enemyDir
+                + ". [Stamina: " + player.getStamina() + "]");
         actionPanel.log("  " + result.getNarration());
         if (result.getDamageDealt() > 0) {
-            actionPanel.log("  Dealt " + result.getDamageDealt() + " damage. Enemy HP: "
-                    + currentOpponent.getHealth());
+            actionPanel.log("  Enemy HP: " + currentOpponent.getHealth() + "/" + currentOpponent.getMaxHealth());
         }
 
         if (!currentOpponent.isAlive()) {
-            actionPanel.log(currentOpponent.getName() + " is defeated!");
-            player.trainSkill(SkillType.MAGIC_SCHOOLS, 35);
-            actionPanel.log("  +35 XP in MAGIC_SCHOOLS");
-            statsPanel.refresh();
-            endCombat();
+            onMonsterDefeated();
+            return;
+        }
+
+        if (currentOpponent.wantsToFlee()) {
+            actionPanel.log(currentOpponent.getName() + " staggers back, broken.");
+            currentOpponent.takeDamage(currentOpponent.getHealth());
+            onMonsterDefeated();
             return;
         }
 
         enemyCounterattack();
+    }
+
+    public void performFeint(CombatDirection fakeDir, CombatDirection realDir, MapEntity monster) {
+        if (!inCombat || currentOpponent == null) return;
+
+        if (!player.useStamina(combatSystem.getFeintStaminaCost())) {
+            actionPanel.log("Not enough stamina for a feint! [Need " + combatSystem.getFeintStaminaCost() + "]");
+            return;
+        }
+
+        CombatDirection enemyGuard = CombatDirection.values()[random.nextInt(4)];
+        CombatResult result = combatSystem.resolveFeint(player, currentOpponent,
+                fakeDir, realDir, enemyGuard);
+        actionPanel.log("You feint " + fakeDir + " -> strike " + realDir
+                + ". Enemy guards " + enemyGuard + ". [Stamina: " + player.getStamina() + "]");
+        actionPanel.log("  " + result.getNarration());
+
+        if (!currentOpponent.isAlive()) {
+            onMonsterDefeated();
+            return;
+        }
+
+        enemyCounterattack();
+    }
+
+    private void onMonsterDefeated() {
+        String name = currentOpponent.getName();
+        actionPanel.log(name + " is defeated!");
+        player.trainSkill(SkillType.FIGHTING, 40);
+        actionPanel.log("  +40 XP in FIGHTING");
+        player.recoverStamina(30);
+        actionPanel.log("  Stamina recovered to " + player.getStamina());
+
+        world.getQuestLog().onMonsterDefeated(name);
+        checkQuestCompletion();
+        checkMilestones();
+        statsPanel.refresh();
+        endCombat();
     }
 
     private void enemyCounterattack() {
@@ -208,12 +357,15 @@ public class GameController {
             counter = combatSystem.resolveMeleeAttack(currentOpponent, player, atkDir, playerGuard);
         }
 
-        actionPanel.log("Enemy attacks from " + atkDir + "! You guard " + playerGuard + ".");
+        actionPanel.log("Enemy attacks " + atkDir + "! You guard " + playerGuard + ".");
         actionPanel.log("  " + counter.getNarration());
         if (counter.getDamageDealt() > 0) {
-            actionPanel.log("  You took " + counter.getDamageDealt() + " damage. HP: "
-                    + player.getHealth());
+            actionPanel.log("  Your HP: " + player.getHealth() + "/" + player.getMaxHealth());
         }
+
+        // Player recovers some stamina each turn
+        player.recoverStamina(8);
+        actionPanel.log("  [Stamina: " + player.getStamina() + "/" + player.getMaxStamina() + "]");
         actionPanel.log("");
         statsPanel.refresh();
 
@@ -226,8 +378,75 @@ public class GameController {
     public void endCombat() {
         inCombat = false;
         currentOpponent = null;
+        currentCombatEntity = null;
+        player.recoverStamina(player.getMaxStamina()); // full recovery out of combat
         actionPanel.showActions(world.getAvailableActions());
         actionPanel.log("--- Combat ended ---");
         actionPanel.log("");
+    }
+
+    private void checkQuestCompletion() {
+        for (Quest quest : world.getQuestLog().getActiveQuests()) {
+            if (quest.checkCompletion()) {
+                quest.complete(player);
+                actionPanel.log("");
+                actionPanel.log("[QUEST COMPLETE] " + quest.getName() + "!");
+                actionPanel.log("  " + quest.getCompletionNarrative());
+                for (Quest.QuestReward reward : quest.getRewards()) {
+                    actionPanel.log("  Reward: " + reward.describe());
+                }
+                statsPanel.refresh();
+            }
+        }
+    }
+
+    private void checkMilestones() {
+        for (Milestone m : world.getMilestones()) {
+            if (m.isEligible(player)) {
+                m.claim(player);
+                actionPanel.log("");
+                actionPanel.log("[MILESTONE] " + m.getTitle() + " (Lv " + m.getLevel() + " " + m.getSkill() + ")");
+                actionPanel.log("  " + m.getUnlockDescription());
+                if (m.getReward() != null) {
+                    actionPanel.log("  Reward item: " + m.getReward());
+                }
+            }
+        }
+    }
+
+    private List<Recipe> getCraftableRecipes() {
+        return world.getRecipes().stream()
+                .filter(r -> r.canCraft(player))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private void autoCraft() {
+        for (Recipe recipe : getCraftableRecipes()) {
+            String result = recipe.craft(player);
+            if (result != null) {
+                actionPanel.log("  [CRAFTED] " + recipe.getName() + " -> " + recipe.getResultItem());
+                actionPanel.log("  " + result);
+                world.getQuestLog().onItemGathered(recipe.getResultItem(), recipe.getResultQuantity());
+            }
+        }
+    }
+
+    private void showInventorySnapshot() {
+        var items = player.getInventory().getAllItems();
+        if (!items.isEmpty()) {
+            StringBuilder sb = new StringBuilder("  Inventory: ");
+            items.forEach((item, qty) -> sb.append(item).append(" x").append(qty).append(", "));
+            actionPanel.log(sb.substring(0, sb.length() - 2));
+        }
+    }
+
+    private void showInventoryFull() {
+        var items = player.getInventory().getAllItems();
+        if (items.isEmpty()) {
+            actionPanel.log("  (empty)");
+        } else {
+            items.forEach((item, qty) ->
+                    actionPanel.log("  " + item + " x" + qty));
+        }
     }
 }

@@ -12,6 +12,7 @@ public class StatsPanel extends JPanel {
     private final JLabel nameLabel;
     private final JLabel healthLabel;
     private final JLabel shieldLabel;
+    private final JLabel staminaLabel;
     private final JPanel skillsPanel;
 
     private static final Color BG = new Color(25, 25, 35);
@@ -20,6 +21,7 @@ public class StatsPanel extends JPanel {
     private static final Color ACCENT = new Color(80, 160, 220);
     private static final Color HEALTH_COLOR = new Color(180, 50, 50);
     private static final Color SHIELD_COLOR = new Color(60, 130, 180);
+    private static final Color STAMINA_COLOR = new Color(200, 180, 60);
     private static final Color XP_BAR = new Color(80, 170, 80);
     private static final Color XP_BG = new Color(45, 45, 55);
 
@@ -48,6 +50,10 @@ public class StatsPanel extends JPanel {
         shieldLabel = createLabel("Shield: 80/80");
         shieldLabel.setForeground(SHIELD_COLOR);
         add(shieldLabel);
+
+        staminaLabel = createLabel("Stamina: 100/100");
+        staminaLabel.setForeground(STAMINA_COLOR);
+        add(staminaLabel);
 
         add(Box.createVerticalStrut(12));
 
@@ -80,14 +86,15 @@ public class StatsPanel extends JPanel {
         if (player == null) return;
 
         nameLabel.setText(player.getName());
-        healthLabel.setText("HP: " + player.getHealth() + "/120");
+        healthLabel.setText("HP: " + player.getHealth() + "/" + player.getMaxHealth());
         shieldLabel.setText("Shield: " + player.getShieldDurability() + "/80");
+        staminaLabel.setText("Stamina: " + player.getStamina() + "/" + player.getMaxStamina());
 
         skillsPanel.removeAll();
         for (SkillType type : SkillType.values()) {
             Skill skill = player.getSkill(type);
             skillsPanel.add(createSkillBar(type.name(), skill.getLevel(), skill.getExperience(),
-                    100 + (skill.getLevel() - 1) * 25));
+                    skill.experienceForNextLevel()));
             skillsPanel.add(Box.createVerticalStrut(2));
         }
         skillsPanel.revalidate();

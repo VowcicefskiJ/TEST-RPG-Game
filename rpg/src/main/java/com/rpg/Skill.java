@@ -34,8 +34,10 @@ public class Skill {
         }
     }
 
-    private int experienceForNextLevel() {
-        return 100 + (level - 1) * 25;
+    public int experienceForNextLevel() {
+        // Exponential curve: early levels are quick, high levels feel earned
+        // Level 1->2: 83, Level 10->11: 388, Level 50->51: ~8000
+        return (int) Math.floor(level + 300 * Math.pow(2, level / 7.0)) / 4;
     }
 
     @Override

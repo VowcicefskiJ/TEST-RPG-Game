@@ -117,6 +117,27 @@ public class ActionPanel extends JPanel {
         }
 
         buttonPanel.add(Box.createVerticalStrut(6));
+        JLabel feintTitle = new JLabel("FEINT");
+        feintTitle.setForeground(new Color(200, 160, 60));
+        feintTitle.setFont(new Font("SansSerif", Font.BOLD, 10));
+        feintTitle.setAlignmentX(LEFT_ALIGNMENT);
+        buttonPanel.add(feintTitle);
+        buttonPanel.add(Box.createVerticalStrut(2));
+        for (CombatDirection fakeDir : CombatDirection.values()) {
+            for (CombatDirection realDir : CombatDirection.values()) {
+                if (fakeDir == realDir) continue;
+                JButton feintBtn = createButton("Feint " + shortDir(fakeDir) + "\u2192" + shortDir(realDir));
+                feintBtn.setForeground(new Color(200, 160, 60));
+                feintBtn.setFont(new Font("SansSerif", Font.PLAIN, 10));
+                feintBtn.addActionListener(e -> {
+                    if (controller != null) controller.performFeint(fakeDir, realDir, monster);
+                });
+                buttonPanel.add(feintBtn);
+                buttonPanel.add(Box.createVerticalStrut(1));
+            }
+        }
+
+        buttonPanel.add(Box.createVerticalStrut(6));
         JButton flee = createButton("Retreat");
         flee.setForeground(new Color(200, 180, 80));
         flee.addActionListener(e -> {
@@ -126,6 +147,16 @@ public class ActionPanel extends JPanel {
 
         buttonPanel.revalidate();
         buttonPanel.repaint();
+    }
+
+    private String shortDir(CombatDirection dir) {
+        switch (dir) {
+            case NORTH: return "N";
+            case SOUTH: return "S";
+            case EAST: return "E";
+            case WEST: return "W";
+            default: return dir.name();
+        }
     }
 
     private JButton createButton(String text) {
