@@ -1,80 +1,89 @@
-# TEST-RPG-Game
+# Ashen Gate RPG
 
-See the RPG prototype in `rpg/` for the Java skill-loop demo, entry point, and design notes.
+A Java 2D tile-based RPG with directional combat, 16 skills, magic schools, quests, crafting, and more.
 
-## Quick start
+## Download & Play (Easiest)
 
-```bash
-javac -d out $(find rpg/src/main/java -name "*.java")
-java -cp out com.rpg.Main
+1. Go to the [**Actions** tab](../../actions) on GitHub
+2. Click the latest **Build & Package Game** run
+3. Scroll to **Artifacts** and download **AshenGate-RPG**
+4. Unzip the download
+5. **Windows:** Double-click `run.bat` (or double-click `AshenGate.jar`)
+6. **Mac/Linux:** Run `./run.sh` in terminal
+
+**Requires:** Java 8 or newer. Download free from [adoptium.net](https://adoptium.net/) if needed.
+
+**Login:** Username `admin` / Password `admin123`
+
+## Build From Source
+
+### Prerequisites
+- Java JDK 8+ ([adoptium.net](https://adoptium.net/))
+
+### Windows
+```bat
+git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
+cd TEST-RPG-Game
+build.bat
+cd dist
+run.bat
 ```
 
-That will run the sample loop, spell catalog preview, animation preview, and starter area overview.
-
-## Windows quick start (PowerShell)
-
-1. **Install a JDK (if you see "javac is not recognized").**
-   - Recommended: **JDK 21 (LTS)**. JDK 17 (LTS) also works.
-   - Download and install a JDK (e.g., Temurin or Oracle JDK).
-   - After install, open a new PowerShell and confirm:
-     ```powershell
-     java -version
-     javac -version
-     ```
-2. **Clone and enter the repo.**
-   ```powershell
-   git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
-   cd TEST-RPG-Game
-   ```
-3. **Compile using PowerShell syntax.**
-   ```powershell
-   javac -d out (Get-ChildItem -Recurse rpg/src/main/java -Filter *.java).FullName
-   ```
-4. **Run the game.**
-   ```powershell
-   java -cp out com.rpg.Main
-   ```
-
-## Step-by-step run guide
-
-1. **Open a terminal at the repo root.**
-   ```bash
-   git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
-   cd TEST-RPG-Game
-   ```
-2. **Compile the Java sources.**
-   ```bash
-   javac -d out $(find rpg/src/main/java -name "*.java")
-   ```
-3. **Run the game.**
-   ```bash
-   java -cp out com.rpg.Main
-   ```
-4. **Log in at the prompt.** Use the seeded admin account:
-   - **Username:** `admin`
-   - **Password:** `admin123`
-5. **Follow the console output.** You will see the XP loop, combat preview, animations, and starter-area overview.
-
-## Local test server (single-user)
-
-This prototype is currently a **local console app**, not a networked server. To run your personal "test server," compile and launch the app locally and log in as the seeded admin user:
-
+### Mac / Linux
 ```bash
-javac -d out $(find rpg/src/main/java -name "*.java")
-java -cp out com.rpg.Main
+git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
+cd TEST-RPG-Game
+chmod +x build.sh run.sh
+./build.sh
+cd dist
+./run.sh
 ```
 
-Default admin credentials (from `rpg/data/users.csv`):
+### Manual compile (no build script)
+```bash
+cd TEST-RPG-Game/rpg
+mkdir -p build
+javac -d build src/main/java/com/rpg/*.java src/main/java/com/rpg/gui/*.java
+java -cp build com.rpg.Main
+```
+
+## Run Tests
+```bash
+javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
+java -cp rpg/build com.rpg.GameSystemsTest
+```
+65 automated tests cover inventory, crafting, combat, quests, milestones, stamina, and XP systems.
+
+## Game Features
+
+- **16 Skills:** Cooking, Farming, Fishing, Fighting, Foraging, Mapping, Alchemy, Mining, Geology, Archaeology, Lorekeeping, Magic Schools, Blacksmithing, Armor Making, Weapon Making, Staff Making
+- **Directional Combat:** 4-way attack/parry system with combos, feints, bleed, stagger, and morale
+- **Stamina System:** Actions cost stamina, recovers between turns
+- **Crafting:** 8 recipes linking skills together (mine ore -> smelt -> forge weapons)
+- **Quest System:** 5 quests with progress tracking and XP/item rewards
+- **Level Milestones:** Unlock rewards at skill levels 5 and 10
+- **Exponential XP Curve:** Early levels are quick, high levels feel earned
+- **Tile-based GUI:** WASD movement, mouse interaction, context-aware action buttons
+
+## Default Credentials
+
 - **Username:** `admin`
 - **Password:** `admin123`
 
-If you want to add your own test user, append a new row to `rpg/data/users.csv` with a SHA-256 password hash. You can generate hashes using the `PasswordHasher` class or any SHA-256 tool and keep the role as `ADMIN` for now.
+To add users, edit `rpg/data/users.csv` with a SHA-256 hashed password.
 
-## Design notes
+## Project Structure
 
-- **Skill loop:** Actions award XP and levels via `GameEngine` + `SkillAction`.
-- **World data:** `GameWorld` aggregates areas, skills, spells, and animations.
-- **Combat preview:** `CombatSystem` shows directional parry resolution.
-- **AI agents:** `AiAgent` and `BasicPlannerAgent` pick actions to progress skills.
+```
+rpg/
+  src/main/java/com/rpg/       # Core game logic
+  src/main/java/com/rpg/gui/   # Swing GUI (GameWindow, GamePanel, etc.)
+  data/users.csv                # User database
+  MANIFEST.MF                   # JAR manifest
+build.bat / build.sh            # Build scripts
+run.bat / run.sh                # Launcher scripts
+.github/workflows/build.yml     # CI: auto-builds JAR on every push
+docs/PROJECT_MAP.md             # Detailed codebase map
+```
 
 For a full map of the codebase, see `docs/PROJECT_MAP.md`.

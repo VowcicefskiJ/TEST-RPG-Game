@@ -4,6 +4,7 @@ import com.rpg.gui.GameWindow;
 import com.rpg.gui.LoginDialog;
 
 import javax.swing.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Main {
@@ -15,7 +16,12 @@ public class Main {
         }
 
         SwingUtilities.invokeLater(() -> {
-            UserDatabase userDatabase = new FileUserDatabase(Path.of("rpg", "data", "users.csv"));
+            // Find users.csv: check distribution layout first, then dev layout
+            Path usersPath = Path.of("data", "users.csv");
+            if (!Files.exists(usersPath)) {
+                usersPath = Path.of("rpg", "data", "users.csv");
+            }
+            UserDatabase userDatabase = new FileUserDatabase(usersPath);
 
             // Show login dialog
             LoginDialog loginDialog = new LoginDialog(null, userDatabase);

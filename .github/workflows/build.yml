@@ -1,0 +1,45 @@
+name: Build & Package Game
+
+on:
+  push:
+    branches: [ main, 'claude/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Compile sources
+        run: |
+          mkdir -p rpg/build
+          javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
+
+      - name: Run tests
+        run: java -cp rpg/build com.rpg.GameSystemsTest
+
+      - name: Package JAR
+        run: |
+          mkdir -p dist/data
+          jar cfm dist/AshenGate.jar rpg/MANIFEST.MF -C rpg/build .
+          cp rpg/data/users.csv dist/data/users.csv
+          cp run.bat dist/run.bat
+          cp run.sh dist/run.sh
+          chmod +x dist/run.sh
+
+      - name: Upload game artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AshenGate-RPG
+          path: dist/
+          retention-days: 90
