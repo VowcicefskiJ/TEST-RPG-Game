@@ -47,12 +47,12 @@ public class GameWindow extends JFrame {
         setLocationRelativeTo(null);
 
         // Initialize game
-        Area starterArea = world.getAreas().get(0);
-        TileMap tileMap = new TileMap(starterArea);
-
         GameController controller = new GameController(world, player, gamePanel,
                 statsPanel, actionPanel);
         actionPanel.setController(controller);
+
+        Area starterArea = world.getAreas().get(0);
+        TileMap tileMap = new TileMap(starterArea, controller.getStarterAreaLinks());
 
         // Start player at gate entrance
         int startX = TileMap.WIDTH / 2;

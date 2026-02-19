@@ -63,6 +63,23 @@ public class GameWorld {
         trainingNpcs.add(new Npc("Training Duelist", 90, 40));
         trainingNpcs.add(new Npc("Ward Adept", 70, 60));
         areas.add(createStarterVale());
+        areas.add(createDarkwoodForest());
+        areas.add(createHollowCaves());
+        areas.add(createAshenRuins());
+    }
+
+    public Area getAreaByName(String name) {
+        for (Area a : areas) {
+            if (a.getName().equals(name)) return a;
+        }
+        return null;
+    }
+
+    public int getAreaIndex(String name) {
+        for (int i = 0; i < areas.size(); i++) {
+            if (areas.get(i).getName().equals(name)) return i;
+        }
+        return -1;
     }
 
     private void seedRecipes() {
@@ -180,6 +197,63 @@ public class GameWorld {
                 "Mithril Pick", "Access to deep mine areas."));
         milestones.add(new Milestone(SkillType.MAGIC_SCHOOLS, 10, "Adept",
                 "Arcane Focus", "Unlock tier-3 spells and reduce mana costs."));
+    }
+
+    private Area createDarkwoodForest() {
+        List<ResourceNode> resources = List.of(
+                new ResourceNode("Hollow Oak Grove", SkillType.FORAGING, "Grave Pine Resin"),
+                new ResourceNode("Moonlit Glade", SkillType.ALCHEMY, "Bleak Thistle"),
+                new ResourceNode("Darkwood Stream", SkillType.FISHING, "Shadow Trout"),
+                new ResourceNode("Tangled Thicket", SkillType.FARMING, "Wild Nightshade")
+        );
+        List<Npc> monsters = List.of(
+                new Npc("Timber Wolf", 110, 15, 22, 8, 4, true),
+                new Npc("Blighted Treant", 160, 40, 18, 18, 6, true),
+                new Npc("Forest Wraith", 90, 10, 14, 4, 22, true),
+                new Npc("Dire Bear", 180, 20, 26, 12, 2, true)
+        );
+        return new Area(
+                "Darkwood Forest",
+                "Ancient trees blot out the sky. Their canopy weaves a perpetual twilight where predators stalk silently.",
+                resources, monsters);
+    }
+
+    private Area createHollowCaves() {
+        List<ResourceNode> resources = List.of(
+                new ResourceNode("Crystal Vein", SkillType.MINING, "Ironstone Shard"),
+                new ResourceNode("Deep Copper Seam", SkillType.MINING, "Copper Nugget"),
+                new ResourceNode("Fossil Shelf", SkillType.GEOLOGY, "Ancient Fossil"),
+                new ResourceNode("Underground Pool", SkillType.FISHING, "Blind Cavefish")
+        );
+        List<Npc> monsters = List.of(
+                new Npc("Cave Spider", 75, 10, 20, 6, 2, true),
+                new Npc("Stone Golem", 200, 50, 24, 22, 0, true),
+                new Npc("Deep Crawler", 120, 15, 18, 10, 8, true),
+                new Npc("Crystal Bat Swarm", 60, 5, 12, 2, 14, true)
+        );
+        return new Area(
+                "Hollow Caves",
+                "A labyrinth of dripping stone descends into the earth. Crystal veins glow faintly in the eternal dark.",
+                resources, monsters);
+    }
+
+    private Area createAshenRuins() {
+        List<ResourceNode> resources = List.of(
+                new ResourceNode("Crumbling Archive", SkillType.ARCHAEOLOGY, "Ancient Scroll"),
+                new ResourceNode("Fallen Obelisk", SkillType.LOREKEEPING, "Rune Fragment"),
+                new ResourceNode("Rusted Forge", SkillType.BLACKSMITHING, "Old Iron Scrap"),
+                new ResourceNode("Overgrown Altar", SkillType.MAGIC_SCHOOLS, "Arcane Residue")
+        );
+        List<Npc> monsters = List.of(
+                new Npc("Skeletal Sentinel", 100, 30, 16, 14, 6, true),
+                new Npc("Phantom Scholar", 80, 5, 10, 4, 26, true),
+                new Npc("Ashen Revenant", 150, 25, 22, 10, 16, true),
+                new Npc("Bound Wraith", 120, 15, 18, 8, 20, true)
+        );
+        return new Area(
+                "Ashen Ruins",
+                "Shattered columns rise from ash-covered ground. The remnants of a great civilization whisper forgotten secrets.",
+                resources, monsters);
     }
 
     private Area createStarterVale() {

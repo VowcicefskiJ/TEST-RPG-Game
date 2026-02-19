@@ -57,14 +57,23 @@ public class TileMap {
     private final float[][] elevation; // 0..1 height for shading
     private final List<MapEntity> entities = new ArrayList<>();
     private final long seed;
+    private final String areaName;
 
     public TileMap(Area area) {
+        this(area, null);
+    }
+
+    public TileMap(Area area, String[] linkedAreaNames) {
         tiles = new int[HEIGHT][WIDTH];
         biome = new int[HEIGHT][WIDTH];
         elevation = new float[HEIGHT][WIDTH];
         seed = area.getName().hashCode();
+        areaName = area.getName();
         generate(area);
+        if (linkedAreaNames != null) placePortals(linkedAreaNames);
     }
+
+    public String getAreaName() { return areaName; }
 
     public int getTile(int x, int y) {
         if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return TILE_WALL;
@@ -111,22 +120,30 @@ public class TileMap {
         // Step 3: Lay base terrain from elevation + biome
         layBaseTerrain(rng);
 
-        // Step 4: Carve a river
-        carveRiver(rng);
+        // Step 4: Carve a river (not in caves)
+        if (!areaName.contains("Hollow")) {
+            carveRiver(rng);
+        }
 
-        // Step 5: Build the town center
-        buildTown(rng);
+        // Step 5: Build the town center (only in starter area)
+        if (areaName.contains("Gloamcrest")) {
+            buildTown(rng);
+        }
 
-        // Step 6: Carve paths connecting key locations
-        carvePaths(rng);
+        // Step 6: Carve paths
+        if (areaName.contains("Gloamcrest")) {
+            carvePaths(rng);
+        } else {
+            carveWildPaths(rng);
+        }
 
-        // Step 7: Add ruins in the ruins biome
+        // Step 7: Add ruins in ruins areas
         buildRuins(rng);
 
-        // Step 8: Scatter decoration (bushes, mushrooms, flowers, graves)
+        // Step 8: Scatter decoration
         scatterDecoration(rng);
 
-        // Step 9: Border walls with gate
+        // Step 9: Border walls
         buildBorders();
 
         // Step 10: Place entities from area data
@@ -187,16 +204,30 @@ public class TileMap {
                 float nx = (float) x / WIDTH;
                 float ny = (float) y / HEIGHT;
 
-                if (nx > 0.35 && nx < 0.65 && ny > 0.35 && ny < 0.65) {
-                    biome[y][x] = BIOME_TOWN;
-                } else if (nx < 0.3 && ny < 0.45) {
-                    biome[y][x] = BIOME_FOREST;
-                } else if (nx > 0.7 && ny < 0.4) {
+                if (areaName.contains("Darkwood")) {
+                    // Mostly forest with swamp edges
+                    if (ny > 0.75) biome[y][x] = BIOME_SWAMP;
+                    else biome[y][x] = BIOME_FOREST;
+                } else if (areaName.contains("Hollow")) {
+                    // All ruins biome (cave aesthetic uses ruins palette)
                     biome[y][x] = BIOME_RUINS;
-                } else if (ny > 0.7 && nx < 0.4) {
-                    biome[y][x] = BIOME_SWAMP;
+                } else if (areaName.contains("Ashen")) {
+                    // Mostly ruins with some vale
+                    if (nx > 0.6 && ny > 0.6) biome[y][x] = BIOME_VALE;
+                    else biome[y][x] = BIOME_RUINS;
                 } else {
-                    biome[y][x] = BIOME_VALE;
+                    // Gloamcrest Rise (starter) — mixed biomes
+                    if (nx > 0.35 && nx < 0.65 && ny > 0.35 && ny < 0.65) {
+                        biome[y][x] = BIOME_TOWN;
+                    } else if (nx < 0.3 && ny < 0.45) {
+                        biome[y][x] = BIOME_FOREST;
+                    } else if (nx > 0.7 && ny < 0.4) {
+                        biome[y][x] = BIOME_RUINS;
+                    } else if (ny > 0.7 && nx < 0.4) {
+                        biome[y][x] = BIOME_SWAMP;
+                    } else {
+                        biome[y][x] = BIOME_VALE;
+                    }
                 }
             }
         }
@@ -437,6 +468,54 @@ public class TileMap {
         // Gate entrance at bottom center
         tiles[HEIGHT - 1][WIDTH / 2] = TILE_DOOR;
         tiles[HEIGHT - 1][WIDTH / 2 + 1] = TILE_DOOR;
+    }
+
+    private void carveWildPaths(Random rng) {
+        // Create a few winding paths across the area
+        int cx = WIDTH / 2, cy = HEIGHT / 2;
+        // Cross path
+        carvePath(3, cy + rng.nextInt(5) - 2, WIDTH - 3, cy + rng.nextInt(5) - 2);
+        carvePath(cx + rng.nextInt(5) - 2, 3, cx + rng.nextInt(5) - 2, HEIGHT - 3);
+        // Diagonal path
+        carvePath(5, 5, WIDTH - 5, HEIGHT - 5);
+    }
+
+    private void placePortals(String[] linkedAreaNames) {
+        // Place portal entities at compass edges of the map
+        // North portal
+        if (linkedAreaNames.length > 0 && linkedAreaNames[0] != null) {
+            int px = WIDTH / 2;
+            // Clear space for portal
+            tiles[1][px] = TILE_COBBLE;
+            tiles[1][px + 1] = TILE_COBBLE;
+            entities.add(new MapEntity(px, 1, MapEntity.TYPE_PORTAL,
+                    "Portal: " + linkedAreaNames[0],
+                    "Travel to " + linkedAreaNames[0], linkedAreaNames[0]));
+        }
+        // East portal
+        if (linkedAreaNames.length > 1 && linkedAreaNames[1] != null) {
+            int py = HEIGHT / 2;
+            tiles[py][WIDTH - 2] = TILE_COBBLE;
+            entities.add(new MapEntity(WIDTH - 2, py, MapEntity.TYPE_PORTAL,
+                    "Portal: " + linkedAreaNames[1],
+                    "Travel to " + linkedAreaNames[1], linkedAreaNames[1]));
+        }
+        // South portal
+        if (linkedAreaNames.length > 2 && linkedAreaNames[2] != null) {
+            int px = WIDTH / 2;
+            tiles[HEIGHT - 2][px] = TILE_COBBLE;
+            entities.add(new MapEntity(px, HEIGHT - 2, MapEntity.TYPE_PORTAL,
+                    "Portal: " + linkedAreaNames[2],
+                    "Travel to " + linkedAreaNames[2], linkedAreaNames[2]));
+        }
+        // West portal
+        if (linkedAreaNames.length > 3 && linkedAreaNames[3] != null) {
+            int py = HEIGHT / 2;
+            tiles[py][1] = TILE_COBBLE;
+            entities.add(new MapEntity(1, py, MapEntity.TYPE_PORTAL,
+                    "Portal: " + linkedAreaNames[3],
+                    "Travel to " + linkedAreaNames[3], linkedAreaNames[3]));
+        }
     }
 
     private void placeEntities(Area area, Random rng) {

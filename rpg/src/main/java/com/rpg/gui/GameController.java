@@ -14,6 +14,7 @@ public class GameController {
     private final ActionPanel actionPanel;
     private final Random random = new Random();
 
+    private int currentAreaIndex = 0;
     private boolean inCombat = false;
     private Npc currentOpponent;
     private MapEntity currentCombatEntity;
@@ -26,6 +27,56 @@ public class GameController {
         this.gamePanel = gamePanel;
         this.statsPanel = statsPanel;
         this.actionPanel = actionPanel;
+    }
+
+    public Area getCurrentArea() {
+        return world.getAreas().get(currentAreaIndex);
+    }
+
+    public void changeArea(String targetAreaName) {
+        int idx = world.getAreaIndex(targetAreaName);
+        if (idx < 0) {
+            actionPanel.log("That path leads nowhere...");
+            return;
+        }
+        currentAreaIndex = idx;
+        Area newArea = getCurrentArea();
+
+        actionPanel.log("");
+        actionPanel.log("=== Traveling to " + newArea.getName() + " ===");
+        actionPanel.log(newArea.getDescription());
+        actionPanel.log("");
+
+        // Build new map with portals linking to other areas
+        String[] links = getAreaLinks(targetAreaName);
+        TileMap newMap = new TileMap(newArea, links);
+
+        // Place player at the south entrance of the new area
+        int startX = TileMap.WIDTH / 2;
+        int startY = TileMap.HEIGHT - 3;
+        gamePanel.init(newMap, startX, startY, this);
+        statsPanel.refresh();
+        actionPanel.showActions(world.getAvailableActions());
+    }
+
+    private String[] getAreaLinks(String areaName) {
+        // Links: [north, east, south, west]
+        switch (areaName) {
+            case "Gloamcrest Rise":
+                return new String[]{"Darkwood Forest", "Ashen Ruins", null, "Hollow Caves"};
+            case "Darkwood Forest":
+                return new String[]{null, null, "Gloamcrest Rise", "Hollow Caves"};
+            case "Hollow Caves":
+                return new String[]{null, "Gloamcrest Rise", null, "Ashen Ruins"};
+            case "Ashen Ruins":
+                return new String[]{null, null, null, "Gloamcrest Rise"};
+            default:
+                return new String[]{};
+        }
+    }
+
+    public String[] getStarterAreaLinks() {
+        return getAreaLinks("Gloamcrest Rise");
     }
 
     public void start() {
@@ -68,7 +119,7 @@ public class GameController {
 
     private void showContextActions(MapEntity resourceEntity) {
         // Find the skill type this resource matches
-        Area area = world.getAreas().get(0);
+        Area area = getCurrentArea();
         for (ResourceNode node : area.getResources()) {
             if (node.getName().equals(resourceEntity.getName())) {
                 List<SkillAction> contextActions = world.getActionsForSkill(node.getSkillType());
@@ -94,6 +145,11 @@ public class GameController {
             case MapEntity.TYPE_NPC:
                 talkToNpc(entity);
                 break;
+            case MapEntity.TYPE_PORTAL:
+                if (entity.getTargetArea() != null) {
+                    changeArea(entity.getTargetArea());
+                }
+                break;
         }
     }
 
@@ -102,7 +158,7 @@ public class GameController {
         actionPanel.log(entity.getDescription());
 
         // Find the matching resource node to get the item
-        Area area = world.getAreas().get(0);
+        Area area = getCurrentArea();
         for (ResourceNode node : area.getResources()) {
             if (node.getName().equals(entity.getName())) {
                 String item = node.getResourceItem();
@@ -135,7 +191,7 @@ public class GameController {
     private void startCombat(MapEntity entity) {
         inCombat = true;
         currentCombatEntity = entity;
-        Area area = world.getAreas().get(0);
+        Area area = getCurrentArea();
         currentOpponent = null;
         for (Npc monster : area.getMonsters()) {
             if (monster.getName().equals(entity.getName())) {
@@ -168,7 +224,7 @@ public class GameController {
         if (entity.getName().contains("Elowen")) {
             actionPanel.log("");
             actionPanel.log("Elowen offers you a primer on each craft skill.");
-            Area area = world.getAreas().get(0);
+            Area area = getCurrentArea();
             if (!area.getSkillTutors().isEmpty()) {
                 SkillTutor tutor = area.getSkillTutors().get(0);
                 for (SkillLesson lesson : tutor.getLessons()) {

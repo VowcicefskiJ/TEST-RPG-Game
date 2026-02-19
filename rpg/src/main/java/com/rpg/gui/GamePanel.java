@@ -624,6 +624,31 @@ public class GamePanel extends JPanel {
                 g.setFont(new Font("SansSerif", Font.BOLD, 12));
                 g.drawString("!", px + 14, py);
                 break;
+
+            case MapEntity.TYPE_PORTAL:
+                // Swirling portal effect
+                int pulseMod = (int) (animTick % 4);
+                // Outer glow
+                g.setColor(new Color(100, 50, 200, 40 + pulseMod * 15));
+                g.fillOval(px - 4, py - 4, s + 8, s + 8);
+                // Portal ring
+                g.setColor(new Color(140, 80, 220, 180));
+                g.fillOval(px + 2, py + 2, s - 4, s - 4);
+                // Inner vortex
+                g.setColor(new Color(180, 120, 255, 200));
+                g.fillOval(px + 6 + pulseMod, py + 6 + pulseMod, s - 12 - pulseMod, s - 12 - pulseMod);
+                // Center bright spot
+                g.setColor(new Color(220, 200, 255, 230));
+                g.fillOval(px + 10, py + 10, s - 20, s - 20);
+                // Sparkles
+                g.setColor(new Color(255, 255, 255, 150));
+                g.fillOval(px + 8 + (pulseMod * 3), py + 6, 3, 3);
+                g.fillOval(px + 20 - (pulseMod * 2), py + 22 - pulseMod, 2, 2);
+                // Label arrow
+                g.setFont(new Font("SansSerif", Font.BOLD, 8));
+                g.setColor(new Color(200, 180, 255));
+                g.drawString("\u2192", px + 12, py + 18);
+                break;
         }
     }
 
@@ -727,6 +752,7 @@ public class GamePanel extends JPanel {
                 case MapEntity.TYPE_RESOURCE: g.setColor(COLOR_RESOURCE); break;
                 case MapEntity.TYPE_MONSTER: g.setColor(COLOR_MONSTER); break;
                 case MapEntity.TYPE_NPC: g.setColor(Color.GREEN); break;
+                case MapEntity.TYPE_PORTAL: g.setColor(new Color(180, 120, 255)); break;
             }
             g.fillRect(mmX + (int)(e.getX() * sx), mmY + (int)(e.getY() * sy), 2, 2);
         }
