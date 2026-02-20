@@ -1,24 +1,32 @@
 # Ashen Gate RPG
 
-A Java 2D tile-based RPG with directional combat, 16 skills, magic schools, quests, crafting, and more.
+A Java 2D tile-based RPG with directional combat, 16 skills, 4 world zones, magic schools, quests, crafting, and more.
 
-## Download & Play (Easiest)
+---
 
-1. Go to the [**Actions** tab](../../actions) on GitHub
-2. Click the latest **Build & Package Game** run
-3. Scroll to **Artifacts** and download **AshenGate-RPG**
-4. Unzip the download
-5. **Windows:** Double-click `run.bat` (or double-click `AshenGate.jar`)
-6. **Mac/Linux:** Run `./run.sh` in terminal
+## Download & Play
 
-**Requires:** Java 8 or newer. Download free from [adoptium.net](https://adoptium.net/) if needed.
+> **No Java installation required** — the native installers below bundle everything.
+
+Go to the [**Actions** tab](../../actions), click the latest **Build & Package Game** run, scroll to **Artifacts**, and download for your platform:
+
+| Platform | Artifact name | How to install |
+|----------|--------------|----------------|
+| **Windows** | `AshenGate-Windows-Setup` | Unzip → run `Ashen Gate-1.0.0.exe` → double-click desktop icon |
+| **macOS** | `AshenGate-macOS` | Unzip → open `.dmg` → drag to Applications |
+| **Linux** | `AshenGate-Linux-deb` | Unzip → `sudo dpkg -i ashengate_1.0.0_amd64.deb` |
+| **Any OS** (needs Java) | `AshenGate-JAR-portable` | Unzip → run `run.bat` (Win) or `./run.sh` (Mac/Linux) |
+
+> **macOS note:** If you see "unidentified developer", right-click the app → Open → Open.
 
 **Login:** Username `admin` / Password `admin123`
+
+---
 
 ## Build From Source
 
 ### Prerequisites
-- Java JDK 8+ ([adoptium.net](https://adoptium.net/))
+- Java JDK 21+ ([adoptium.net](https://adoptium.net/))
 
 ### Windows
 ```bat
@@ -39,51 +47,57 @@ cd dist
 ./run.sh
 ```
 
-### Manual compile (no build script)
+### Manual compile
 ```bash
-cd TEST-RPG-Game/rpg
-mkdir -p build
-javac -d build src/main/java/com/rpg/*.java src/main/java/com/rpg/gui/*.java
-java -cp build com.rpg.Main
+cd TEST-RPG-Game
+mkdir -p rpg/build
+javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
+java -cp rpg/build com.rpg.Main
 ```
+
+---
 
 ## Run Tests
 ```bash
 javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
 java -cp rpg/build com.rpg.GameSystemsTest
 ```
-65 automated tests cover inventory, crafting, combat, quests, milestones, stamina, and XP systems.
+65 automated tests covering inventory, crafting, combat, quests, milestones, stamina, and XP systems.
+
+---
 
 ## Game Features
 
+- **4 World Zones** with portals: Gloamcrest Rise → Darkwood Forest, Hollow Caves, Ashen Ruins
 - **16 Skills:** Cooking, Farming, Fishing, Fighting, Foraging, Mapping, Alchemy, Mining, Geology, Archaeology, Lorekeeping, Magic Schools, Blacksmithing, Armor Making, Weapon Making, Staff Making
-- **Directional Combat:** 4-way attack/parry system with combos, feints, bleed, stagger, and morale
+- **Directional Combat:** 4-way attack/parry with combos, feints, bleed, stagger, and morale
 - **Stamina System:** Actions cost stamina, recovers between turns
-- **Crafting:** 8 recipes linking skills together (mine ore -> smelt -> forge weapons)
+- **Crafting:** 8 recipes linking skills (mine ore → smelt → forge weapons)
 - **Quest System:** 5 quests with progress tracking and XP/item rewards
-- **Level Milestones:** Unlock rewards at skill levels 5 and 10
-- **Exponential XP Curve:** Early levels are quick, high levels feel earned
-- **Tile-based GUI:** WASD movement, mouse interaction, context-aware action buttons
+- **Level Milestones:** Unlock reward items at skill levels 5 and 10
+- **Procedural World:** Biome-aware terrain, rivers, towns, ruins, and animated tiles
+- **WASD movement**, camera scrolling, minimap, animated entity sprites
+
+---
 
 ## Default Credentials
 
 - **Username:** `admin`
 - **Password:** `admin123`
 
-To add users, edit `rpg/data/users.csv` with a SHA-256 hashed password.
+To add users, edit `rpg/data/users.csv` (password is SHA-256 hashed).
+
+---
 
 ## Project Structure
 
 ```
 rpg/
-  src/main/java/com/rpg/       # Core game logic
-  src/main/java/com/rpg/gui/   # Swing GUI (GameWindow, GamePanel, etc.)
-  data/users.csv                # User database
-  MANIFEST.MF                   # JAR manifest
-build.bat / build.sh            # Build scripts
-run.bat / run.sh                # Launcher scripts
-.github/workflows/build.yml     # CI: auto-builds JAR on every push
-docs/PROJECT_MAP.md             # Detailed codebase map
+  src/main/java/com/rpg/       # Core game logic (Player, Combat, Skills, etc.)
+  src/main/java/com/rpg/gui/   # Swing GUI (GamePanel, TileMap, GameController, etc.)
+  data/users.csv               # User credentials
+  MANIFEST.MF                  # JAR main-class manifest
+build.bat / build.sh           # Build scripts (compile + package JAR)
+run.bat / run.sh               # Launcher scripts
+.github/workflows/build.yml    # CI: auto-builds native installers on every push
 ```
-
-For a full map of the codebase, see `docs/PROJECT_MAP.md`.

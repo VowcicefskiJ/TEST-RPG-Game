@@ -7,12 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
+  # Step 1: Compile, test, and produce the JAR
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -20,26 +19,179 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Compile sources
+      - name: Compile
         run: |
           mkdir -p rpg/build
-          javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
+          javac -d rpg/build \
+            rpg/src/main/java/com/rpg/*.java \
+            rpg/src/main/java/com/rpg/gui/*.java
 
       - name: Run tests
         run: java -cp rpg/build com.rpg.GameSystemsTest
 
-      - name: Package JAR
+      - name: Package JAR + data
+        run: |
+          mkdir -p staging/data
+          jar cfm staging/AshenGate.jar rpg/MANIFEST.MF -C rpg/build .
+          cp rpg/data/users.csv staging/data/users.csv
+
+      - name: Upload staging artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging
+          path: staging/
+          retention-days: 1
+
+  # Step 2a: Windows .exe installer (bundles JRE — no Java download needed)
+  package-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: staging
+          path: staging/
+
+      - name: Create Windows installer
+        shell: cmd
+        run: |
+          mkdir installer
+          jpackage ^
+            --type exe ^
+            --input staging ^
+            --main-jar AshenGate.jar ^
+            --main-class com.rpg.Main ^
+            --name "Ashen Gate" ^
+            --app-version "1.0.0" ^
+            --description "Ashen Gate RPG - 2D tile-based RPG" ^
+            --vendor "Ashen Gate" ^
+            --win-shortcut ^
+            --win-menu ^
+            --win-dir-chooser ^
+            --dest installer
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AshenGate-Windows-Setup
+          path: installer/*.exe
+          retention-days: 90
+
+  # Step 2b: macOS .dmg (bundles JRE — no Java download needed)
+  package-macos:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: staging
+          path: staging/
+
+      - name: Create macOS disk image
+        run: |
+          mkdir -p installer
+          jpackage \
+            --type dmg \
+            --input staging \
+            --main-jar AshenGate.jar \
+            --main-class com.rpg.Main \
+            --name "AshenGate" \
+            --app-version "1.0.0" \
+            --description "Ashen Gate RPG" \
+            --dest installer
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AshenGate-macOS
+          path: installer/*.dmg
+          retention-days: 90
+
+  # Step 2c: Linux .deb (bundles JRE — no Java download needed)
+  package-linux:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Install fakeroot (required by jpackage for deb)
+        run: sudo apt-get install -y fakeroot
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: staging
+          path: staging/
+
+      - name: Create Linux deb package
+        run: |
+          mkdir -p installer
+          jpackage \
+            --type deb \
+            --input staging \
+            --main-jar AshenGate.jar \
+            --main-class com.rpg.Main \
+            --name "ashengate" \
+            --app-version "1.0.0" \
+            --description "Ashen Gate RPG" \
+            --dest installer
+
+      - name: Upload Linux installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AshenGate-Linux-deb
+          path: installer/*.deb
+          retention-days: 90
+
+  # Step 2d: Portable JAR bundle (for players who already have Java)
+  package-jar:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: staging
+          path: staging/
+
+      - name: Assemble portable bundle
         run: |
           mkdir -p dist/data
-          jar cfm dist/AshenGate.jar rpg/MANIFEST.MF -C rpg/build .
-          cp rpg/data/users.csv dist/data/users.csv
+          cp staging/AshenGate.jar dist/AshenGate.jar
+          cp staging/data/users.csv dist/data/users.csv
           cp run.bat dist/run.bat
           cp run.sh dist/run.sh
           chmod +x dist/run.sh
 
-      - name: Upload game artifact
+      - name: Upload portable JAR
         uses: actions/upload-artifact@v4
         with:
-          name: AshenGate-RPG
+          name: AshenGate-JAR-portable
           path: dist/
           retention-days: 90

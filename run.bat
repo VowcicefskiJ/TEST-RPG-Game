@@ -1,15 +1,20 @@
 @echo off
 title Ashen Gate RPG
-echo Starting Ashen Gate...
+echo Starting Ashen Gate RPG...
+echo.
 
 :: Check if Java is installed
 java -version >nul 2>&1
 if errorlevel 1 (
+    echo  *** Java is not installed ***
     echo.
-    echo ERROR: Java is not installed or not in your PATH.
+    echo  This portable JAR version requires Java 21 or newer.
+    echo  For a version that needs NO software install, use the
+    echo  native installer instead:
     echo.
-    echo Download Java from: https://adoptium.net/
-    echo After installing, restart this script.
+    echo    GitHub Actions tab -^> Latest build -^> AshenGate-Windows-Setup
+    echo.
+    echo  Or install Java from: https://adoptium.net/
     echo.
     pause
     exit /b 1
