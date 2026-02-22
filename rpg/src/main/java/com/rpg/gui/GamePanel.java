@@ -65,6 +65,9 @@ public class GamePanel extends JPanel {
     private int highlightX = -1, highlightY = -1;
     private long zoneBannerTick = -20; // tick when last zone change happened
 
+    // Inventory overlay reference
+    private InventoryPanel inventoryPanel;
+
     // Animation timer
     private final Timer animTimer;
 
@@ -84,6 +87,9 @@ public class GamePanel extends JPanel {
                     case KeyEvent.VK_D: case KeyEvent.VK_RIGHT: dx = 1;  playerFacing = 2; break;
                     case KeyEvent.VK_E: case KeyEvent.VK_SPACE:
                         controller.interact(playerX, playerY);
+                        return;
+                    case KeyEvent.VK_I:
+                        toggleInventory();
                         return;
                 }
                 if (dx != 0 || dy != 0) movePlayer(dx, dy);
@@ -138,6 +144,16 @@ public class GamePanel extends JPanel {
     public int getPlayerX() { return playerX; }
     public int getPlayerY() { return playerY; }
     public TileMap getTileMap() { return tileMap; }
+
+    public void setInventoryPanel(InventoryPanel panel) { this.inventoryPanel = panel; }
+
+    private void toggleInventory() {
+        if (inventoryPanel != null) {
+            boolean show = !inventoryPanel.isVisible();
+            if (show) inventoryPanel.syncFromInventory();
+            inventoryPanel.setVisible(show);
+        }
+    }
 
     private void movePlayer(int dx, int dy) {
         int nx = playerX + dx;
@@ -223,7 +239,7 @@ public class GamePanel extends JPanel {
         // HUD
         g2.setFont(new Font("Monospaced", Font.PLAIN, 10));
         g2.setColor(new Color(255, 255, 255, 160));
-        g2.drawString("WASD=Move  E=Interact  [" + playerX + "," + playerY + "]", 8, getHeight() - 6);
+        g2.drawString("WASD=Move  E=Interact  I=Inventory  [" + playerX + "," + playerY + "]", 8, getHeight() - 6);
 
         // Zone banner (fades after 15 ticks)
         long bannerAge = animTick - zoneBannerTick;

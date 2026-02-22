@@ -9,6 +9,7 @@ public class GameWindow extends JFrame {
     private final GamePanel gamePanel;
     private final StatsPanel statsPanel;
     private final ActionPanel actionPanel;
+    private final InventoryPanel inventoryPanel;
 
     public GameWindow(GameWorld world, Player player) {
         super("Ashen Gate - RPG Prototype");
@@ -19,11 +20,27 @@ public class GameWindow extends JFrame {
         gamePanel = new GamePanel();
         statsPanel = new StatsPanel();
         actionPanel = new ActionPanel();
+        inventoryPanel = new InventoryPanel();
+        inventoryPanel.setVisible(false);
+
+        // Use a layered pane to overlay inventory on top of the game panel
+        JLayeredPane layered = new JLayeredPane();
+        Dimension gameSize = gamePanel.getPreferredSize();
+        layered.setPreferredSize(gameSize);
+        gamePanel.setBounds(0, 0, gameSize.width, gameSize.height);
+        layered.add(gamePanel, JLayeredPane.DEFAULT_LAYER);
+
+        // Center inventory panel in game area
+        Dimension invSize = inventoryPanel.getPreferredSize();
+        int invX = (gameSize.width - invSize.width) / 2;
+        int invY = (gameSize.height - invSize.height) / 2;
+        inventoryPanel.setBounds(invX, invY, invSize.width, invSize.height);
+        layered.add(inventoryPanel, JLayeredPane.PALETTE_LAYER);
 
         // Layout: stats on the left, game in center, log on bottom
         setLayout(new BorderLayout(2, 2));
         add(statsPanel, BorderLayout.WEST);
-        add(gamePanel, BorderLayout.CENTER);
+        add(layered, BorderLayout.CENTER);
         add(actionPanel, BorderLayout.SOUTH);
 
         // Title bar at top
@@ -48,8 +65,10 @@ public class GameWindow extends JFrame {
 
         // Initialize game
         GameController controller = new GameController(world, player, gamePanel,
-                statsPanel, actionPanel);
+                statsPanel, actionPanel, inventoryPanel);
         actionPanel.setController(controller);
+
+        inventoryPanel.setPlayer(player);
 
         Area starterArea = world.getAreas().get(0);
         TileMap tileMap = new TileMap(starterArea, controller.getStarterAreaLinks());
@@ -58,6 +77,7 @@ public class GameWindow extends JFrame {
         int startX = TileMap.WIDTH / 2;
         int startY = TileMap.HEIGHT - 3;
         gamePanel.init(tileMap, startX, startY, controller);
+        gamePanel.setInventoryPanel(inventoryPanel);
         controller.start();
 
         // Focus the game panel for keyboard input

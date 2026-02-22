@@ -14,19 +14,23 @@ public class GameController {
     private final ActionPanel actionPanel;
     private final Random random = new Random();
 
+    private final InventoryPanel inventoryPanel;
+
     private int currentAreaIndex = 0;
     private boolean inCombat = false;
     private Npc currentOpponent;
     private MapEntity currentCombatEntity;
 
     public GameController(GameWorld world, Player player, GamePanel gamePanel,
-                          StatsPanel statsPanel, ActionPanel actionPanel) {
+                          StatsPanel statsPanel, ActionPanel actionPanel,
+                          InventoryPanel inventoryPanel) {
         this.world = world;
         this.player = player;
         this.combatSystem = new CombatSystem();
         this.gamePanel = gamePanel;
         this.statsPanel = statsPanel;
         this.actionPanel = actionPanel;
+        this.inventoryPanel = inventoryPanel;
     }
 
     public Area getCurrentArea() {
@@ -180,6 +184,7 @@ public class GameController {
                 checkQuestCompletion();
                 checkMilestones();
                 statsPanel.refresh();
+                refreshInventoryPanel();
                 showInventorySnapshot();
                 actionPanel.log("");
                 return;
@@ -286,6 +291,7 @@ public class GameController {
 
         actionPanel.log("");
         statsPanel.refresh();
+        refreshInventoryPanel();
     }
 
     public void performMeleeAttack(CombatDirection direction, MapEntity monster) {
@@ -452,6 +458,7 @@ public class GameController {
                     actionPanel.log("  Reward: " + reward.describe());
                 }
                 statsPanel.refresh();
+                refreshInventoryPanel();
             }
         }
     }
@@ -503,6 +510,12 @@ public class GameController {
         } else {
             items.forEach((item, qty) ->
                     actionPanel.log("  " + item + " x" + qty));
+        }
+    }
+
+    private void refreshInventoryPanel() {
+        if (inventoryPanel != null) {
+            inventoryPanel.syncFromInventory();
         }
     }
 }
