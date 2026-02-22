@@ -6,20 +6,22 @@ A Java 2D tile-based RPG with directional combat, 16 skills, 4 world zones, magi
 
 ## Download & Play
 
-> **No Java installation required** — the native installers below bundle everything.
+**No Java install required** — pick the right file for your system:
 
-Go to the [**Actions** tab](../../actions), click the latest **Build & Package Game** run, scroll to **Artifacts**, and download for your platform:
+| File | Platform | Steps |
+|------|----------|-------|
+| `Ashen Gate-1.0.0.exe` | **Windows** | 1. Download → 2. Run installer → 3. Launch from Start Menu or Desktop |
+| `AshenGate-1.0.0.dmg` | **macOS** | 1. Download → 2. Open DMG → 3. Drag to Applications → 4. Open |
+| `ashengate_1.0.0_amd64.deb` | **Linux** | 1. Download → 2. `sudo dpkg -i ashengate*.deb` → 3. Launch from apps |
+| `AshenGate-portable.zip` | **Any OS** *(needs Java 21)* | 1. Download → 2. Unzip → 3. Run `run.bat` (Win) or `./run.sh` (Mac/Linux) |
 
-| Platform | Artifact name | How to install |
-|----------|--------------|----------------|
-| **Windows** | `AshenGate-Windows-Setup` | Unzip → run `Ashen Gate-1.0.0.exe` → double-click desktop icon |
-| **macOS** | `AshenGate-macOS` | Unzip → open `.dmg` → drag to Applications |
-| **Linux** | `AshenGate-Linux-deb` | Unzip → `sudo dpkg -i ashengate_1.0.0_amd64.deb` |
-| **Any OS** (needs Java) | `AshenGate-JAR-portable` | Unzip → run `run.bat` (Win) or `./run.sh` (Mac/Linux) |
-
-> **macOS note:** If you see "unidentified developer", right-click the app → Open → Open.
+**[⬇ Go to Downloads (Releases page)](../../releases/latest)**
 
 **Login:** Username `admin` / Password `admin123`
+
+> **Windows SmartScreen:** If Windows shows "Unknown publisher", click **More info → Run anyway** — the installer is safe but unsigned.
+>
+> **macOS Gatekeeper:** If blocked, right-click the `.app` → **Open** → **Open**.
 
 ---
 
@@ -33,8 +35,7 @@ Go to the [**Actions** tab](../../actions), click the latest **Build & Package G
 git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
 cd TEST-RPG-Game
 build.bat
-cd dist
-run.bat
+cd dist && run.bat
 ```
 
 ### Mac / Linux
@@ -42,14 +43,11 @@ run.bat
 git clone https://github.com/VowcicefskiJ/TEST-RPG-Game.git
 cd TEST-RPG-Game
 chmod +x build.sh run.sh
-./build.sh
-cd dist
-./run.sh
+./build.sh && cd dist && ./run.sh
 ```
 
 ### Manual compile
 ```bash
-cd TEST-RPG-Game
 mkdir -p rpg/build
 javac -d rpg/build rpg/src/main/java/com/rpg/*.java rpg/src/main/java/com/rpg/gui/*.java
 java -cp rpg/build com.rpg.Main
@@ -75,8 +73,8 @@ java -cp rpg/build com.rpg.GameSystemsTest
 - **Crafting:** 8 recipes linking skills (mine ore → smelt → forge weapons)
 - **Quest System:** 5 quests with progress tracking and XP/item rewards
 - **Level Milestones:** Unlock reward items at skill levels 5 and 10
-- **Procedural World:** Biome-aware terrain, rivers, towns, ruins, and animated tiles
-- **WASD movement**, camera scrolling, minimap, animated entity sprites
+- **Procedural World:** Biome-aware terrain, rivers, towns, ruins, animated tiles, minimap
+- **WASD movement**, camera scrolling, name-aware entity sprites with idle animations
 
 ---
 
@@ -85,7 +83,7 @@ java -cp rpg/build com.rpg.GameSystemsTest
 - **Username:** `admin`
 - **Password:** `admin123`
 
-To add users, edit `rpg/data/users.csv` (password is SHA-256 hashed).
+To add users, edit `rpg/data/users.csv` (password column is SHA-256 hashed).
 
 ---
 
@@ -99,5 +97,5 @@ rpg/
   MANIFEST.MF                  # JAR main-class manifest
 build.bat / build.sh           # Build scripts (compile + package JAR)
 run.bat / run.sh               # Launcher scripts
-.github/workflows/build.yml    # CI: auto-builds native installers on every push
+.github/workflows/build.yml    # CI: auto-builds native installers + GitHub Release on every push
 ```

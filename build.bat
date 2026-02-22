@@ -13,7 +13,7 @@ mkdir dist\data
 
 :: Compile
 echo Compiling Java sources...
-javac -d rpg\build rpg\src\main\java\com\rpg\*.java rpg\src\main\java\com\rpg\gui\*.java
+javac --release 17 -d rpg\build rpg\src\main\java\com\rpg\*.java rpg\src\main\java\com\rpg\gui\*.java
 if errorlevel 1 (
     echo.
     echo BUILD FAILED: Compilation errors.

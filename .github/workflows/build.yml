@@ -6,8 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+# Allow the workflow to create releases and upload release assets
+permissions:
+  contents: write
+
 jobs:
-  # Step 1: Compile, test, and produce the JAR
+  # ─── Step 1: Compile, test, and produce the JAR ───────────────────────────
   build:
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +26,7 @@ jobs:
       - name: Compile
         run: |
           mkdir -p rpg/build
-          javac -d rpg/build \
+          javac --release 17 -d rpg/build \
             rpg/src/main/java/com/rpg/*.java \
             rpg/src/main/java/com/rpg/gui/*.java
 
@@ -42,7 +46,7 @@ jobs:
           path: staging/
           retention-days: 1
 
-  # Step 2a: Windows .exe installer (bundles JRE — no Java download needed)
+  # ─── Step 2a: Windows .exe installer (bundles JRE — no Java needed) ───────
   package-windows:
     needs: build
     runs-on: windows-latest
@@ -54,6 +58,18 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+
+      - name: Add WiX to PATH (required by jpackage --type exe)
+        shell: pwsh
+        run: |
+          $wix = Get-ChildItem "C:\Program Files (x86)\WiX Toolset*" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($wix) {
+            $bin = Join-Path $wix.FullName "bin"
+            echo "$bin" >> $env:GITHUB_PATH
+            Write-Host "Found WiX at: $bin"
+          } else {
+            Write-Host "WiX not found, jpackage may use NSIS instead"
+          }
 
       - name: Download JAR
         uses: actions/download-artifact@v4
@@ -79,14 +95,21 @@ jobs:
             --win-dir-chooser ^
             --dest installer
 
-      - name: Upload Windows installer
+      - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: AshenGate-Windows-Setup
           path: installer/*.exe
           retention-days: 90
 
-  # Step 2b: macOS .dmg (bundles JRE — no Java download needed)
+      - name: Save Windows installer for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: installer/*.exe
+          retention-days: 1
+
+  # ─── Step 2b: macOS .dmg (bundles JRE — no Java needed) ──────────────────
   package-macos:
     needs: build
     runs-on: macos-latest
@@ -118,14 +141,21 @@ jobs:
             --description "Ashen Gate RPG" \
             --dest installer
 
-      - name: Upload macOS installer
+      - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: AshenGate-macOS
           path: installer/*.dmg
           retention-days: 90
 
-  # Step 2c: Linux .deb (bundles JRE — no Java download needed)
+      - name: Save macOS for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: installer/*.dmg
+          retention-days: 1
+
+  # ─── Step 2c: Linux .deb (bundles JRE — no Java needed) ──────────────────
   package-linux:
     needs: build
     runs-on: ubuntu-latest
@@ -160,14 +190,21 @@ jobs:
             --description "Ashen Gate RPG" \
             --dest installer
 
-      - name: Upload Linux installer
+      - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: AshenGate-Linux-deb
           path: installer/*.deb
           retention-days: 90
 
-  # Step 2d: Portable JAR bundle (for players who already have Java)
+      - name: Save Linux for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: installer/*.deb
+          retention-days: 1
+
+  # ─── Step 2d: Portable JAR zip (for anyone who has Java) ─────────────────
   package-jar:
     needs: build
     runs-on: ubuntu-latest
@@ -182,16 +219,94 @@ jobs:
 
       - name: Assemble portable bundle
         run: |
-          mkdir -p dist/data
-          cp staging/AshenGate.jar dist/AshenGate.jar
-          cp staging/data/users.csv dist/data/users.csv
-          cp run.bat dist/run.bat
-          cp run.sh dist/run.sh
-          chmod +x dist/run.sh
+          mkdir -p portable/data
+          cp staging/AshenGate.jar portable/AshenGate.jar
+          cp staging/data/users.csv portable/data/users.csv
+          cp run.bat portable/run.bat
+          cp run.sh portable/run.sh
+          chmod +x portable/run.sh
+          cd portable && zip -r ../AshenGate-portable.zip .
 
-      - name: Upload portable JAR
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
           name: AshenGate-JAR-portable
-          path: dist/
+          path: AshenGate-portable.zip
           retention-days: 90
+
+      - name: Save portable for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-jar
+          path: AshenGate-portable.zip
+          retention-days: 1
+
+  # ─── Step 3: Publish GitHub Release (publicly downloadable, no login) ─────
+  release:
+    needs: [package-windows, package-macos, package-linux, package-jar]
+    runs-on: ubuntu-latest
+    # Only publish releases on push (not PRs)
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release/
+        continue-on-error: true
+
+      - name: Download macOS disk image
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos
+          path: release/
+        continue-on-error: true
+
+      - name: Download Linux deb
+        uses: actions/download-artifact@v4
+        with:
+          name: release-linux
+          path: release/
+        continue-on-error: true
+
+      - name: Download portable JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: release-jar
+          path: release/
+        continue-on-error: true
+
+      - name: List release files
+        run: ls -lh release/
+
+      - name: Delete old latest release (if exists)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest-build --yes 2>/dev/null || true
+          git push origin :refs/tags/latest-build 2>/dev/null || true
+
+      - name: Create GitHub Release with all installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest-build \
+            --title "Ashen Gate RPG — Latest Build" \
+            --notes "## Download & Play
+
+          Pick the right file for your system — **no Java install needed** for the native installers.
+
+          | File | Platform | Install |
+          |------|----------|---------|
+          | \`Ashen Gate-1.0.0.exe\` | **Windows** | Run the installer → launches from Start Menu |
+          | \`AshenGate-1.0.0.dmg\` | **macOS** | Open DMG → drag to Applications |
+          | \`ashengate_1.0.0_amd64.deb\` | **Linux** | \`sudo dpkg -i ashengate*.deb\` |
+          | \`AshenGate-portable.zip\` | **Any OS** (needs Java 21) | Unzip → run \`run.bat\` or \`./run.sh\` |
+
+          **Login:** \`admin\` / \`admin123\`
+
+          > macOS: If blocked by Gatekeeper, right-click the app → Open → Open." \
+            --prerelease \
+            release/* || echo "Some files may be missing — that is OK"
